@@ -7,16 +7,25 @@ Install-ADDSForest -CreateDnsDelegation:$false -DatabasePath "C:\Windows\NTDS" -
 # If AD is already installed, execute the vulnerable AD script
 IEX((new-object net.webclient).downloadstring("((https://github.com/the404cloud-com/AD/blob/main/AD.ps1))"));  Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/the404cloud-com/AD/main/AD.ps1' -UseBasicParsing).Content
 
+##
+# Script to install RSAT features on Windows
 
-function ShowBanner {
-    $banner  = @()   
-    $banner+= $Global:Spacing + ''  
-    $banner+= $Global:Spacing + 'VULN AD - Vulnerable Active Directory'  
-    $banner+= $Global:Spacing + ''                                                    
-    $banner+= $Global:Spacing + 'By andrew'  
-    $banner | foreach-object {  
-        Write-Host $_ -ForegroundColor (Get-Random -Input @('Green','Cyan','Yellow','gray','white'))  
-    }                               
-}  
+# Check if the operating system supports RSAT installation
+if ((Get-WindowsFeature RSAT*).Count -eq 0) {
+    Write-Host "RSAT features are not available for this OS version or already installed." -ForegroundColor Red
+    exit  
+}
+  
+# Install all RSAT features
+Write-Host "Installing all RSAT features..." -ForegroundColor Yellow
+$rsatFeatures = Get-WindowsFeature | Where-Object { $_.Name -like "RSAT*" -and $_.InstallState -ne "Installed" }
 
-Invoke-VulnAD -UsersLimit 100 -DomainName "the404cloud.com"  
+if ($rsatFeatures) {
+    $rsatFeatures | ForEach-Object {
+        Install-WindowsFeature -Name $_.Name -IncludeManagementTools -Verbose
+    }
+    Write-Host "RSAT features installed successfully." -ForegroundColor Green
+} else {
+    Write-Host "All RSAT features are already installed." -ForegroundColor Green
+}
+
